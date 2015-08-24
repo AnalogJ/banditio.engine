@@ -11,6 +11,16 @@ import tornado.websocket
 import tornado.log
 import os
 import logging
+import json
+from agent.console import Console
+from agent.debugger import Debugger
+from agent.dom import Dom
+from agent.dom_debugger import DomDebugger
+from agent.input import Input
+from agent.network import Network
+from agent.page import Page
+from agent.runtime import Runtime
+from agent.timeline import Timeline
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -26,7 +36,37 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         print 'message received %s' % message
-        self.write_message('message received %s' % message)
+        payload = json.loads(message)
+
+        type, method = payload['method'].split('.')
+        response = {}
+        try:
+            if type == 'Console':
+                response = getattr(Console, method)()
+            elif type == 'Debugger':
+                response = getattr(Debugger, method)()
+            elif type == 'DOM':
+                response = getattr(Dom, method)()
+            elif type == 'DOMDebugger':
+                response = getattr(DomDebugger, method)()
+            elif type == 'Input':
+                response = getattr(Input, method)()
+            elif type == 'Network':
+                response = getattr(Network, method)()
+            elif type == 'Page':
+                response = getattr(Page, method)()
+            elif type == 'Runtime':
+                response = getattr(Runtime, method)()
+            elif type == 'Timeline':
+                response = getattr(Timeline, method)()
+            else:
+                response = {"error":"Unimplemented"}
+        except:
+            response = {"error":"Unimplemented Method"}
+
+        response['id'] = payload['id']
+        print response
+        self.write_message(response)
 
     def on_close(self):
         print 'connection closed'
