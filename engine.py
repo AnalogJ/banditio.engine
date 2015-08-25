@@ -30,24 +30,30 @@ from parse_rest.datatypes import Object
 
 
 
+register(os.environ.get('PARSE_CLIENT_KEY'), os.environ.get('PARSE_REST_CLIENT_SECRET'))
+user = User.login(os.environ.get('PARSE_USERNAME'), os.environ.get('PARSE_PASSWORD'))
+
+
+
 class PagesHandler(tornado.web.RequestHandler):
     def get(self):
 
         pageClass = Object.factory('Page')
-        pages = pageClass.Query.all().order_by("createdAt")
+        with SessionToken(user.sessionToken):
+            pages = pageClass.Query.all().order_by("createdAt")
 
-        json_data = []
-        for page in pages:
-            json_data.append({
-                "description": "",
-                "id": page.objectId,
-                "thumbnailUrl": "/thumb/6457782A-408E-4E7D-B55D-5F73B13E49AC",
-                "title": page.title,
-                "type": "page",
-                "url": page.title
-            })
+            json_data = []
+            for page in pages:
+                json_data.append({
+                    "description": "",
+                    "id": page.objectId,
+                    "thumbnailUrl": "/thumb/6457782A-408E-4E7D-B55D-5F73B13E49AC",
+                    "title": page.title,
+                    "type": "page",
+                    "url": page.title
+                })
 
-        self.write(json_encode(json_data))
+            self.write(json_encode(json_data))
         # #WebSocketHandler.ws_send('test',{"method":"Network.responseReceived","params":{"requestId":"7897.16","frameId":"7897.1","loaderId":"7897.2","timestamp":87808.405844,"type":"Other","response":{"url":"http://www.chromium.org/","status":200,"statusText":"OK","headers":{"Date":"Tue, 25 Aug 2015 02:12:24 GMT","Content-Encoding":"gzip","X-Content-Type-Options":"nosniff","Last-Modified":"Mon, 24 Aug 2015 22:25:37 GMT","Server":"GSE","Age":"0","ETag":"\"1440455137124|#public|0|en|||0\"","X-Frame-Options":"SAMEORIGIN","Content-Type":"text/html; charset=utf-8","Cache-Control":"public, max-age=5","X-Robots-Tag":"noarchive","Content-Length":"6810","X-XSS-Protection":"1; mode=block","Expires":"Tue, 25 Aug 2015 01:31:23 GMT"},"mimeType":"text/html","connectionReused":False,"connectionId":0,"encodedDataLength":-1,"fromDiskCache":True,"fromServiceWorker":False,"timing":{"requestTime":87808.405171,"proxyStart":-1,"proxyEnd":-1,"dnsStart":-1,"dnsEnd":-1,"connectStart":-1,"connectEnd":-1,"sslStart":-1,"sslEnd":-1,"serviceWorkerFetchStart":-1,"serviceWorkerFetchReady":-1,"serviceWorkerFetchEnd":-1,"sendStart":0.218000001041219,"sendEnd":0.218000001041219,"receiveHeadersEnd":0.409999993280508},"remoteIPAddress":"216.239.32.27","remotePort":80,"protocol":"http/1.1"}}})
         # #WebSocketHandler.ws_send('test', {"method":"Network.dataReceived","params":{"requestId":"7897.16","timestamp":87808.406327,"dataLength":23423,"encodedDataLength":0}})
         # #WebSocketHandler.ws_send('test', {"method":"Network.loadingFinished","params":{"requestId":"7897.16","timestamp":87808.406273,"encodedDataLength":0}})
@@ -61,55 +67,66 @@ class PagesHandler(tornado.web.RequestHandler):
         # #WebSocketHandler.ws_send('test', {"method":"Page.frameStoppedLoading","params":{"frameId":"7897.1"}})
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
-    sockets = {}
+    rooms = {}
 
     def check_origin(self, origin):
         return True
 
-    def open(self, page_id):
+    def open(self, room_id):
         print 'new connection'
-        self.page_id = page_id
+        self.room_id = room_id
         #u = User.signup("dhelmet", "12345")
-        self.user = User.login(os.environ.get('PARSE_USERNAME'), os.environ.get('PARSE_PASSWORD'))
-        WebSocketHandler.sockets[page_id] = self
-        self.write_message("connected")
+        if WebSocketHandler.rooms.get(room_id, None):
+            WebSocketHandler.rooms[room_id].append(self)
+        else:
+            WebSocketHandler.rooms[room_id] = [self]
+
+        WebSocketHandler.room_send(room_id, {"msg":"client connected"})
 
     def on_message(self, message):
         print 'message received %s' % message
         payload = json.loads(message)
 
-        type, method = payload['method'].split('.')
-        response = {}
-        try:
-            if type == 'DOM':
-                response = getattr(Dom, method)()
-            elif type == 'Network':
-                response = getattr(Network, method)()
-            elif type == 'Page':
-                response = getattr(Page, method)()
-            elif type == 'Timeline':
-                response = getattr(Timeline, method)()
-            else:
-                response = {"error": "Unimplemented Class"}
-        except:
-            response = {"error": "Unimplemented Method"}
+        #this is a command, which can only be processed by this engine.
+        if payload.get('method', None) and payload.get('id', None):
+            type, method = payload['method'].split('.')
+            response = {}
+            try:
+                if type == 'DOM':
+                    response = getattr(Dom, method)()
+                elif type == 'Network':
+                    response = getattr(Network, method)()
+                elif type == 'Page':
+                    response = getattr(Page, method)()
+                elif type == 'Timeline':
+                    response = getattr(Timeline, method)()
+                else:
+                    response = {"error": "Unimplemented Class"}
+            except:
+                response = {"error": "Unimplemented Method"}
 
-        response['id'] = payload['id']
-        print response
-        self.write_message(response)
+            response['id'] = payload['id']
+            print response
+            WebSocketHandler.room_send(self.room_id, response)
+        else:
+            # this is a message, relay it to every other socket in the room.
+            WebSocketHandler.room_send(self.room_id, payload, self)
 
     def on_close(self):
         print 'connection closed'
+        conn_sockets = WebSocketHandler.rooms[self.room_id]
+        conn_sockets.remove(self)
+        WebSocketHandler.rooms[self.room_id] = conn_sockets
+
 
     @classmethod
-    def ws_send(cls, socket_id, message):
-        socket = cls.sockets[socket_id]
-
-        if not socket.ws_connection.stream.socket:
-            print "Web socket does not exist anymore!!!"
-            del cls.sockets[socket_id]
-        else:
-            socket.write_message(message)
+    def room_send(cls, room_id, message, skip_socket=None):
+        sockets = cls.rooms[room_id]
+        for socket in sockets:
+            if skip_socket and (socket is skip_socket):
+                continue
+            else:
+                socket.write_message(message)
 
 class Engine():
 
@@ -139,6 +156,5 @@ class Engine():
 
 
 if __name__ == "__main__":
-    register(os.environ.get('PARSE_CLIENT_KEY'), os.environ.get('PARSE_REST_CLIENT_SECRET'))
 
     Engine()
