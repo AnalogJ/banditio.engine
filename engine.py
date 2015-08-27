@@ -81,7 +81,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         else:
             WebSocketHandler.rooms[room_id] = [self]
 
-        WebSocketHandler.room_send(room_id, {"msg":"client connected"})
+        WebSocketHandler.room_send(room_id, {"msg":"new client connected"})
+        self.write_message({'msg':'there are {0} other clients in this room.'.format(len(WebSocketHandler.rooms[room_id])-1)})
 
     def on_message(self, message):
         print 'message received %s' % message

@@ -9,7 +9,7 @@
 
 	http://localhost:9222/json
 	find websocketdebuggerurl
-	chrome-devtools://devtools/bundled/devtools.html?ws=localhost:9222/devtools/page/60333B1C-DF75-450A-BBB0-7B971D9F935C
+	chrome-devtools://devtools/bundled/devtools.html?ws=localhost:9222/devtools/page/97EB937F-B13F-416B-A2CD-98A8453B4314
 	reload window 1
 	find websocket, view connection informaiton
 	
