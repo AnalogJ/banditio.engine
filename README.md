@@ -1,7 +1,7 @@
 #debug chrome protocol
 - window 1
 
-	/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --no-first-run --user-data-dir=~/temp/chrome-dev-profile http://localhost:9222 http://chromium.org
+	/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --no-first-run --user-data-dir=/tmp/chrome-dev-profile http://localhost:9222 http://chromium.org
 	http://localhost:9222/devtools/inspector.html?ws=192.168.99.100:9000/ws
 	# then click on the chromium tab
 	
