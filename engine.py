@@ -23,37 +23,28 @@ from agent.network import Network
 from agent.page import Page
 from agent.timeline import Timeline
 
-from parse_rest.connection import register,SessionToken
-from parse_rest.user import User
-from parse_rest.datatypes import ACL
-from parse_rest.datatypes import Object
-
-
-
-register(os.environ.get('PARSE_CLIENT_KEY'), os.environ.get('PARSE_REST_CLIENT_SECRET'))
-user = User.login(os.environ.get('PARSE_USERNAME'), os.environ.get('PARSE_PASSWORD'))
-
-
-
 class PagesHandler(tornado.web.RequestHandler):
     def get(self):
 
-        pageClass = Object.factory('Page')
-        with SessionToken(user.sessionToken):
-            pages = pageClass.Query.all().order_by("createdAt")
+        self.write(json_encode({"test":"payload"}))
 
-            json_data = []
-            for page in pages:
-                json_data.append({
-                    "description": "",
-                    "id": page.objectId,
-                    "thumbnailUrl": "/thumb/6457782A-408E-4E7D-B55D-5F73B13E49AC",
-                    "title": page.title,
-                    "type": "page",
-                    "url": page.title
-                })
 
-            self.write(json_encode(json_data))
+        # pageClass = Object.factory('Page')
+        # with SessionToken(user.sessionToken):
+        #     pages = pageClass.Query.all().order_by("createdAt")
+        #
+        #     json_data = []
+        #     for page in pages:
+        #         json_data.append({
+        #             "description": "",
+        #             "id": page.objectId,
+        #             "thumbnailUrl": "/thumb/6457782A-408E-4E7D-B55D-5F73B13E49AC",
+        #             "title": page.title,
+        #             "type": "page",
+        #             "url": page.title
+        #         })
+        #
+        #     self.write(json_encode(json_data))
         # #WebSocketHandler.ws_send('test',{"method":"Network.responseReceived","params":{"requestId":"7897.16","frameId":"7897.1","loaderId":"7897.2","timestamp":87808.405844,"type":"Other","response":{"url":"http://www.chromium.org/","status":200,"statusText":"OK","headers":{"Date":"Tue, 25 Aug 2015 02:12:24 GMT","Content-Encoding":"gzip","X-Content-Type-Options":"nosniff","Last-Modified":"Mon, 24 Aug 2015 22:25:37 GMT","Server":"GSE","Age":"0","ETag":"\"1440455137124|#public|0|en|||0\"","X-Frame-Options":"SAMEORIGIN","Content-Type":"text/html; charset=utf-8","Cache-Control":"public, max-age=5","X-Robots-Tag":"noarchive","Content-Length":"6810","X-XSS-Protection":"1; mode=block","Expires":"Tue, 25 Aug 2015 01:31:23 GMT"},"mimeType":"text/html","connectionReused":False,"connectionId":0,"encodedDataLength":-1,"fromDiskCache":True,"fromServiceWorker":False,"timing":{"requestTime":87808.405171,"proxyStart":-1,"proxyEnd":-1,"dnsStart":-1,"dnsEnd":-1,"connectStart":-1,"connectEnd":-1,"sslStart":-1,"sslEnd":-1,"serviceWorkerFetchStart":-1,"serviceWorkerFetchReady":-1,"serviceWorkerFetchEnd":-1,"sendStart":0.218000001041219,"sendEnd":0.218000001041219,"receiveHeadersEnd":0.409999993280508},"remoteIPAddress":"216.239.32.27","remotePort":80,"protocol":"http/1.1"}}})
         # #WebSocketHandler.ws_send('test', {"method":"Network.dataReceived","params":{"requestId":"7897.16","timestamp":87808.406327,"dataLength":23423,"encodedDataLength":0}})
         # #WebSocketHandler.ws_send('test', {"method":"Network.loadingFinished","params":{"requestId":"7897.16","timestamp":87808.406273,"encodedDataLength":0}})
@@ -75,7 +66,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self, room_id):
         print 'new connection'
         self.room_id = room_id
-        #u = User.signup("dhelmet", "12345")
         if WebSocketHandler.rooms.get(room_id, None):
             WebSocketHandler.rooms[room_id].append(self)
         else:
