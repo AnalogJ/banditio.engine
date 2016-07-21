@@ -13,3 +13,5 @@
 	reload window 1
 	find websocket, view connection informaiton
 	
+
+http://blog.webernetz.net/2014/01/22/at-a-glance-http-proxy-packets-vs-normal-http-packets/
