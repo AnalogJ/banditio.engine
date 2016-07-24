@@ -1,30 +1,50 @@
+#parent image based off alpine & includes s6 service management
 FROM smebberson/alpine-base
 
-#install python & libraries
-RUN apk add --update \
-    python \
-    python-dev \
-    py-pip \
-    build-base \
-	&& pip install virtualenv tornado\
-	&& rm -rf /var/cache/apk/*
-
-#install nginx
-RUN apk add --update nginx git
-
-#copy over the services
-ADD services.d/ /etc/services.d/
-
-#configure nginx
-ADD nginx/nginx.conf /etc/nginx/nginx.conf
-ADD nginx/engine.conf /etc/nginx/conf.d/engine.conf
-RUN chown -R nginx:nginx /var/log/nginx && chmod -R 755 /var/log/nginx
-
+# Set static settings
+# installation directory for all bandit.io software
 WORKDIR /srv/banditio.engine
-
-#clone the application code.
-RUN git clone https://github.com/AnalogJ/banditio.engine.git .
-
-
+# websocket server listen port
 EXPOSE 9000
-EXPOSE 80
+# mitm proxy listen port
+EXPOSE 8000
+ENV LANG=en_US.UTF-8
+
+#install python & libraries for both mitmproxy and websockets servers.
+RUN apk add --no-cache \
+        git \
+        g++ \
+        py-pip \
+        libffi \
+        libffi-dev \
+        libjpeg-turbo \
+        libjpeg-turbo-dev \
+        libxml2 \
+        libxml2-dev \
+        libxslt \
+        libxslt-dev \
+        openssl \
+        openssl-dev \
+        python \
+        python-dev \
+        zlib \
+        zlib-dev \
+    && LDFLAGS=-L/lib pip install mitmproxy pytz tornado websocket-client \
+    && apk del --purge \
+        git \
+        g++ \
+        libffi-dev \
+        libjpeg-turbo-dev \
+        libxml2-dev \
+        libxslt-dev \
+        openssl-dev \
+        python-dev \
+        zlib-dev \
+    && rm -rf ~/.cache/pip
+
+# Copy files to the correct paths on the image.
+ADD services.d/ /etc/services.d/
+ADD mitmproxy/ /srv/banditio.engine/mitmproxy/
+ADD websocket/ /srv/banditio.engine/websocket/
+
+# startup process is defined in the parent image. unchanged here.

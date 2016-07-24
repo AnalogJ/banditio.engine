@@ -118,7 +118,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             else:
                 socket.write_message(message)
 
-class Engine():
+class WebsocketEngine():
 
     def __init__(self):
         self.static_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'web'))
@@ -147,4 +147,4 @@ class Engine():
 
 if __name__ == "__main__":
 
-    Engine()
+    WebsocketEngine()

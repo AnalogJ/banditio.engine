@@ -1,0 +1,2 @@
+#!/usr/bin/with-contenv sh
+exec mitmdump --conf /srv/banditio.engine/mitmproxy/mitmdump.conf
